@@ -1,4 +1,5 @@
 import re
+import string
 from abc import ABC, abstractmethod
 
 from bs4 import NavigableString, BeautifulSoup
@@ -17,6 +18,10 @@ class BaseResponseProcessor(ABC):
 
 
 class HtmlResponseProcessor(BaseResponseProcessor):
+    __reg_ex_pattern = fr'(\s+[{re.escape(string.punctuation)}]+|' \
+                       fr'[{re.escape(string.punctuation)}]+\s+|' \
+                       fr'[{re.escape(string.punctuation)}]+$|' \
+                       fr'^[{re.escape(string.punctuation)}]+|\s+)'
 
     def __init__(self, response: Response, local_port, *args, **kwargs):
         self._response = response
@@ -28,7 +33,7 @@ class HtmlResponseProcessor(BaseResponseProcessor):
         for top_level_tag in self._soup.find_all(recursive=False):
             if top_level_tag is not None:
                 self.modify_content_recursively(top_level_tag)
-        return HttpResponse(self._soup.prettify(), content_type=self._content_type)
+        return HttpResponse(self._soup, content_type=self._content_type)
 
     def modify_content_recursively(self, tag):
         """Check all nested tags and apply transformations for them"""
@@ -46,12 +51,11 @@ class HtmlResponseProcessor(BaseResponseProcessor):
             parsed_url.netloc = ':'.join([PROXY, self._local_port])
             tag['href'] = parsed_url.parsed_url
 
-    @staticmethod
-    def modify_string(tag):
+    def modify_string(self, tag):
         """Split string by space, `"` symbol, and optional proceeding punctuation symbols
         and add '™' mark for 6-length words"""
         words = [word + '™' if len(word) == 6 and word.isalpha() else word for word in
-                 re.split(r'([,.!:;]\s+|[,.!:;]$|\s+|")', tag)]
+                 re.split(self.__reg_ex_pattern, tag)]
         tag.replace_with(''.join(words))
 
 
@@ -68,7 +72,8 @@ class MediaResponseProcessor(BaseResponseProcessor):
 RESPONSE_PROCESSORS_MAP = {
     'image/gif': MediaResponseProcessor,
     'image/svg+xml': MediaResponseProcessor,
-    'image/x-icon': MediaResponseProcessor
+    'image/x-icon': MediaResponseProcessor,
+    'application/javascript': MediaResponseProcessor
 }
 
 
