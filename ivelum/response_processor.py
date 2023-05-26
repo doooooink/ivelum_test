@@ -9,14 +9,14 @@ from ivelum.constants import TARGET_LINK, TARGET, PROXY
 from ivelum.url_parser import StrUrlParser
 
 
-class BaseProcessorProtocol(ABC):
+class BaseResponseProcessor(ABC):
 
     @abstractmethod
     def processed_response(self) -> HttpResponse:
         pass
 
 
-class HtmlResponseProcessor(BaseProcessorProtocol):
+class HtmlResponseProcessor(BaseResponseProcessor):
 
     def __init__(self, response: Response, local_port, *args, **kwargs):
         self._response = response
@@ -55,7 +55,7 @@ class HtmlResponseProcessor(BaseProcessorProtocol):
         tag.replace_with(''.join(words))
 
 
-class MediaResponseProcessor(BaseProcessorProtocol):
+class MediaResponseProcessor(BaseResponseProcessor):
 
     def __init__(self, response: Response, *args, **kwargs):
         self._response = response
@@ -72,7 +72,7 @@ RESPONSE_PROCESSORS_MAP = {
 }
 
 
-def response_processor_factory(response: Response, local_port) -> BaseProcessorProtocol:
+def response_processor_factory(response: Response, local_port) -> BaseResponseProcessor:
     return RESPONSE_PROCESSORS_MAP.get(
         response.headers.get('content-type'), HtmlResponseProcessor
     )(response, local_port)
